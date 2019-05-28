@@ -26,10 +26,10 @@ def delete_old_file(sender, instance, **kwargs):
     if not instance.pk:
         return False
     try:
-        old_file = Attachment.objects.get(pk=instance.pk).file
+        old_file = Attachment.objects.get(pk=instance.pk).file_attachment
     except Attachment.DoesNotExist:
         return False
-    new_file = instance.file
+    new_file = instance.file_attachment
     if not old_file == new_file:
         if os.path.isfile(old_file.path):
             os.remove(old_file.path)
