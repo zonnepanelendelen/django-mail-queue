@@ -16,7 +16,7 @@ class Migration(migrations.Migration):
         migrations.AddField(
             model_name='attachment',
             name='original_filename',
-            field=models.CharField(default=None, max_length=250),
+            field=models.CharField(default=None, null=True, max_length=250),
         ),
         migrations.AlterField(
             model_name='attachment',
