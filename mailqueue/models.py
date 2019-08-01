@@ -143,7 +143,10 @@ class MailerMessage(models.Model):
 class Attachment(models.Model):
     file_attachment = models.FileField(storage=get_storage(), upload_to=upload_to,
                                        blank=True, null=True)
-    original_filename = models.CharField(default=None, max_length=250, blank=False)
+    # Note: for original_filename, null=True is defined only to simplify the migration to the new version of this 
+    # package, having legacy data set. original_filename is actually required when adding attachment to an email 
+    # (it is used in the _send method)
+    original_filename = models.CharField(default=None, max_length=250, blank=False, null=True)
     email = models.ForeignKey(MailerMessage, on_delete=models.CASCADE, blank=True, null=True)
 
     class Meta:
