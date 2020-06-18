@@ -125,11 +125,12 @@ class MailerMessage(models.Model):
 
             # Add any additional attachments
             for attachment in self.attachment_set.all():
-                path = attachment.file_attachment.path
-                if os.path.isfile(path):
-                    with open(path, 'rb') as f:
-                        content = f.read()
-                    msg.attach(attachment.original_filename, content, None)
+
+                # django-storages S3Boto3Storage compatibility
+                if attachment.file_attachment.file.__class__.__name__ == 'S3Boto3StorageFile':
+                    self._attach_s3_file(msg, attachment)
+                else:
+                    self._attach_regular_file(msg, attachment)
             try:
                 msg.send()
                 self.sent = True
@@ -137,6 +138,17 @@ class MailerMessage(models.Model):
                 self.do_not_send = True
                 logger.error('Mail Queue Exception: {0}'.format(e))
             self.save()
+
+    def _attach_s3_file(self, msg, attachment):
+        content = attachment.file_attachment.read()
+        msg.attach(attachment.original_filename, content, None)
+
+    def _attach_regular_file(self, msg, attachment):
+        path = attachment.file_attachment.path
+        if os.path.isfile(path):
+            with open(path, 'rb') as f:
+                content = f.read()
+            msg.attach(attachment.original_filename, content, None)
 
 
 @python_2_unicode_compatible
