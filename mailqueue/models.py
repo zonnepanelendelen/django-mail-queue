@@ -137,7 +137,9 @@ class MailerMessage(models.Model):
                 self.sent = True
             except Exception as e:
                 self.do_not_send = True
+                self.save()
                 logger.error('Mail Queue Exception: {0}'.format(e))
+                raise  # To be handled in send_mail task.
             self.save()
 
     def _attach_remote_storage_file(self, msg, attachment):
