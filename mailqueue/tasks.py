@@ -17,9 +17,6 @@ def send_mail(pk):
             # Do not retry the task, in this case there's no need to hit API repeatedly.
             # Do not report this to Sentry. Refused recipients are tracked in Postmark UI as suppressed.
             return
-        else:
-            # On any other exception proceed further to retry.
-            pass
 
     # Retry when message is not sent
     if not message.sent:
