@@ -98,7 +98,8 @@ class MailerMessage(models.Model):
 
         if getattr(settings, 'MAILQUEUE_CELERY', defaults.MAILQUEUE_CELERY):
             from mailqueue.tasks import send_mail
-            send_mail.delay(self.pk)
+            # send_mail.delay(self.pk)  # in favor of the
+            send_mail.apply_async(args=[self.pk], countdown=10)
         else:
             self._send()
 
