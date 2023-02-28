@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
+
 from django.utils.translation import ugettext_lazy as _
 from django.utils import timezone
 
@@ -37,7 +37,7 @@ class MailerMessageManager(models.Manager):
         self.filter(sent=True, last_attempt__lte=delete_before).delete()
 
 
-@python_2_unicode_compatible
+
 class MailerMessage(models.Model):
     created = models.DateTimeField(_('Created'), auto_now_add=True, auto_now=False,
                                    editable=False, null=True)
@@ -98,7 +98,8 @@ class MailerMessage(models.Model):
 
         if getattr(settings, 'MAILQUEUE_CELERY', defaults.MAILQUEUE_CELERY):
             from mailqueue.tasks import send_mail
-            send_mail.delay(self.pk)
+            # send_mail.delay(self.pk)  # in favor of the
+            send_mail.apply_async(args=[self.pk], countdown=10)
         else:
             self._send()
 
@@ -125,25 +126,42 @@ class MailerMessage(models.Model):
 
             # Add any additional attachments
             for attachment in self.attachment_set.all():
-                path = attachment.file_attachment.path
-                if os.path.isfile(path):
-                    with open(path, 'rb') as f:
-                        content = f.read()
-                    msg.attach(attachment.original_filename, content, None)
+                # Try different ways to read the file
+                try:
+                    self._attach_local_storage_file(msg, attachment)
+                except NotImplementedError:
+                    # For the case when storage backend doesn't support absolute paths.
+                    # Compatibility with S3Boto3Storage of django-storages.
+                    self._attach_remote_storage_file(msg, attachment)
             try:
                 msg.send()
                 self.sent = True
             except Exception as e:
                 self.do_not_send = True
+                self.save()
                 logger.error('Mail Queue Exception: {0}'.format(e))
+                raise  # To be handled in send_mail task.
             self.save()
 
+    def _attach_remote_storage_file(self, msg, attachment):
+        content = attachment.file_attachment.read()
+        msg.attach(attachment.original_filename, content, None)
 
-@python_2_unicode_compatible
+    def _attach_local_storage_file(self, msg, attachment):
+        path = attachment.file_attachment.path
+        if os.path.isfile(path):
+            with open(path, 'rb') as f:
+                content = f.read()
+            msg.attach(attachment.original_filename, content, None)
+
+
 class Attachment(models.Model):
     file_attachment = models.FileField(storage=get_storage(), upload_to=upload_to,
                                        blank=True, null=True)
-    original_filename = models.CharField(default=None, max_length=250, blank=False)
+    # Note: for original_filename, null=True is defined only to simplify the migration to the new version of this 
+    # package, having legacy data set. original_filename is actually required when adding attachment to an email 
+    # (it is used in the _send method)
+    original_filename = models.CharField(default=None, max_length=250, blank=False, null=True)
     email = models.ForeignKey(MailerMessage, on_delete=models.CASCADE, blank=True, null=True)
 
     class Meta:
