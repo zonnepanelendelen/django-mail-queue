@@ -7,7 +7,7 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.mail import EmailMultiAlternatives
 from django.db import models
-from django.utils.encoding import python_2_unicode_compatible
+# python_2_unicode_compatible removed - not needed in Python 3
 from django.utils.translation import gettext_lazy as _
 from django.utils import timezone
 
@@ -37,7 +37,7 @@ class MailerMessageManager(models.Manager):
         self.filter(sent=True, last_attempt__lte=delete_before).delete()
 
 
-@python_2_unicode_compatible
+
 class MailerMessage(models.Model):
     created = models.DateTimeField(_('Created'), auto_now_add=True, auto_now=False,
                                    editable=False, null=True)
@@ -139,7 +139,7 @@ class MailerMessage(models.Model):
             self.save()
 
 
-@python_2_unicode_compatible
+
 class Attachment(models.Model):
     file_attachment = models.FileField(storage=get_storage(), upload_to=upload_to,
                                        blank=True, null=True)
